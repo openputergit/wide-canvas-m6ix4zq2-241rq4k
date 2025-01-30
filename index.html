@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smile Score - AI Happiness Detector</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .glass {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+        }
+        body {
+            background: linear-gradient(135deg, #66c7ed 0%, #4b84dc 100%);
+            min-height: 100vh;
+        }
+        #video {
+            transform: scaleX(-1);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+    <div class="glass p-8 max-w-md w-full">
+        <h1 class="text-3xl font-bold text-white text-center mb-6">Smile Score 😊</h1>
+        
+        <div class="relative mb-6">
+            <video id="video" class="w-full rounded-lg" autoplay muted></video>
+            <canvas id="overlay" class="absolute top-0 left-0 w-full h-full"></canvas>
+        </div>
+
+        <div class="glass p-4 text-center">
+            <h2 class="text-2xl font-semibold text-white mb-2">Happiness Score</h2>
+            <div id="score" class="text-4xl font-bold text-white">0%</div>
+        </div>
+
+        <button id="startBtn" class="mt-6 w-full glass py-3 px-6 text-white font-semibold hover:bg-white/30 transition-all">
+            Start Camera
+        </button>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const overlay = document.getElementById('overlay');
+        const startBtn = document.getElementById('startBtn');
+        const scoreDisplay = document.getElementById('score');
+        
+        // Load face-api models
+        Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/'),
+            faceapi.nets.faceExpressionNet.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/')
+        ]).then(startButton);
+
+        function startButton() {
+            startBtn.addEventListener('click', startVideo);
+        }
+
+        async function startVideo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                startBtn.style.display = 'none';
+                detectExpressions();
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                alert("Please allow camera access to use this app!");
+            }
+        }
+
+        async function detectExpressions() {
+            overlay.width = video.width;
+            overlay.height = video.height;
+            
+            setInterval(async () => {
+                const detections = await faceapi.detectSingleFace(
+                    video,
+                    new faceapi.TinyFaceDetectorOptions()
+                ).withFaceExpressions();
+
+                if (detections) {
+                    const score = Math.round(detections.expressions.happy * 100);
+                    scoreDisplay.textContent = `${score}%`;
+
+                    // Draw face detection
+                    const ctx = overlay.getContext('2d');
+                    ctx.clearRect(0, 0, overlay.width, overlay.height);
+                    const dims = faceapi.matchDimensions(overlay, video, true);
+                    faceapi.draw.drawDetections(overlay, [detections]);
+                }
+            }, 100);
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
